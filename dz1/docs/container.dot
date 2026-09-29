@@ -1,0 +1,65 @@
+digraph Marketplace {
+  graph [label="Маркетплейс — C4 Container\nЦелевая архитектура; реализован только /health в Orders", labelloc=t, fontsize=24, fontname="Arial", bgcolor="white", rankdir=TB, nodesep=0.45, ranksep=0.9, pad=0.4, splines=polyline];
+  node [shape=box, style="rounded,filled", fillcolor="#438DD5", color="#225C8F", fontcolor=white, fontname="Arial", fontsize=12, margin="0.18,0.12"];
+  edge [fontname="Arial", fontsize=10, color="#405467", fontcolor="#243647", arrowsize=0.7];
+
+  buyer [label="Покупатель\n[Person]\nСмотрит ленту, оформляет и оплачивает заказ", fillcolor="#08427B"];
+  seller [label="Продавец\n[Person]\nУправляет своими товарами", fillcolor="#08427B"];
+  provider [label="Платёжный провайдер\n[External Software System]\nПлатёжная страница и проведение платежей", fillcolor="#666666", color="#444444"];
+  email [label="Email-провайдер\n[External Software System]\nДоставка уведомлений", fillcolor="#666666", color="#444444"];
+
+  subgraph cluster_marketplace {
+    label="Marketplace [Software System boundary]";
+    fontname="Arial"; fontsize=18; color="#64748B"; style=dashed; margin=24;
+
+    web [label="Web UI\n[Container: React SPA + static web server]\nИнтерфейс покупателя и продавца"];
+    users [label="Users\n[Container: Python API]\nИдентичность, роли, контакты, предпочтения"];
+    catalog [label="Catalog\n[Container: Python API + worker]\nТовары, цены, остатки и резервы"];
+    feed [label="Feed\n[Container: Python API + worker]\nПерсонализированная лента"];
+    orders [label="Orders\n[Container: Python API + worker]\nСостав, сумма и статусы заказов\nРеализован: только GET /health", penwidth=3];
+    payments [label="Payments\n[Container: Python API + worker]\nПлатёжные попытки и учёт операций"];
+    notifications [label="Notifications\n[Container: Python worker]\nУведомления и повторы доставки"];
+    broker [label="Event broker\n[Container: RabbitMQ]\nДоставка событий, очереди и DLQ", fillcolor="#1168BD"];
+
+    node [shape=cylinder, style=filled, fillcolor="#1168BD"];
+    users_db [label="Users DB\n[Container: PostgreSQL]\nПрофили, роли, email, предпочтения"];
+    catalog_db [label="Catalog DB\n[Container: PostgreSQL]\nТовары, цены, остатки, резервы, outbox"];
+    feed_db [label="Feed DB\n[Container: PostgreSQL]\nПроекция товаров, версии, inbox"];
+    orders_db [label="Orders DB\n[Container: PostgreSQL]\nЗаказы, снимки цен, история, outbox/inbox"];
+    payments_db [label="Payments DB\n[Container: PostgreSQL]\nОперации, идемпотентность, outbox"];
+    notifications_db [label="Notifications DB\n[Container: PostgreSQL]\nДоставки, повторы, inbox"];
+
+    web -> users [label="Вход и профиль\n[HTTPS/JSON, sync]"];
+    web -> catalog [label="Управление товарами\n[HTTPS/JSON, sync]"];
+    web -> feed [label="Лента\n[HTTPS/JSON, sync]"];
+    web -> orders [label="Заказ и ссылка на оплату\n[HTTPS/JSON, sync]"];
+    feed -> users [label="Предпочтения\n[HTTP/JSON, sync]"];
+    feed -> catalog [label="Снимок для восстановления\n[HTTP/JSON, sync]"];
+    orders -> catalog [label="Цены, резерв, подтверждение/освобождение\n[HTTP/JSON, sync]"];
+    orders -> payments [label="Создание платёжной попытки\n[HTTP/JSON, sync]"];
+    notifications -> users [label="Контакт получателя\n[HTTP/JSON, sync]"];
+
+    users -> users_db [label="R/W [SQL, sync]"];
+    catalog -> catalog_db [label="R/W [SQL, sync]"];
+    feed -> feed_db [label="R/W [SQL, sync]"];
+    orders -> orders_db [label="R/W [SQL, sync]"];
+    payments -> payments_db [label="R/W [SQL, sync]"];
+    notifications -> notifications_db [label="R/W [SQL, sync]"];
+
+    catalog -> broker [label="ProductChanged / ProductUnpublished\n[AMQP, async]", style=dashed, color="#A65D16"];
+    broker -> feed [label="События каталога\n[AMQP, async]", style=dashed, color="#A65D16", constraint=false];
+    payments -> broker [label="PaymentSucceeded / PaymentFailed\n[AMQP, async]", style=dashed, color="#A65D16"];
+    broker -> orders [label="Результат оплаты\n[AMQP, async]", style=dashed, color="#A65D16", constraint=false];
+    orders -> broker [label="OrderStatusChanged\n[AMQP, async]", style=dashed, color="#A65D16"];
+    broker -> notifications [label="Статус заказа\n[AMQP, async]", style=dashed, color="#A65D16"];
+  }
+
+  buyer -> web [label="Покупки [HTTPS, sync]"];
+  seller -> web [label="Управление [HTTPS, sync]"];
+  buyer -> provider [label="Оплата по ссылке\n[HTTPS, sync]"];
+  payments -> provider [label="Платёжная сессия, сверка\n[HTTPS API, sync]"];
+  provider -> payments [label="Результат платежа\n[HTTPS webhook, async]", style=dashed, color="#A65D16", constraint=false];
+  notifications -> email [label="Отправка email\n[HTTPS API, sync]"];
+
+  legend [shape=note, fillcolor="#F1F5F9", fontcolor="#243647", color="#94A3B8", label="Легенда\nТёмно-синий: человек · Синий: контейнер\nЦилиндр: отдельное хранилище · Серый: внешняя система\nСплошная стрелка: sync · Пунктирная стрелка: async\nНаправление: инициатор → получатель; ответы не показаны\nУ каждого сервиса — только своя БД"];
+}

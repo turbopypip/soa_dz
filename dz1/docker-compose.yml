@@ -1,0 +1,11 @@
+services:
+  orders:
+    build: ./services/orders
+    ports:
+      - "127.0.0.1:${ORDERS_PORT:-8080}:8080"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
