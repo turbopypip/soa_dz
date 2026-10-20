@@ -19,15 +19,15 @@ digraph Marketplace {
     orders [label="Orders\n[Container: Python API + worker]\nСостав, сумма и статусы заказов\nРеализован: только GET /health", penwidth=3];
     payments [label="Payments\n[Container: Python API + worker]\nПлатёжные попытки и учёт операций"];
     notifications [label="Notifications\n[Container: Python worker]\nУведомления и повторы доставки"];
-    broker [label="Event broker\n[Container: RabbitMQ]\nДоставка событий, очереди и DLQ", fillcolor="#1168BD"];
+    broker [label="Event broker\n[Container: RabbitMQ]\nОчереди событий", fillcolor="#1168BD"];
 
     node [shape=cylinder, style=filled, fillcolor="#1168BD"];
     users_db [label="Users DB\n[Container: PostgreSQL]\nПрофили, роли, email, предпочтения"];
-    catalog_db [label="Catalog DB\n[Container: PostgreSQL]\nТовары, цены, остатки, резервы, outbox"];
-    feed_db [label="Feed DB\n[Container: PostgreSQL]\nПроекция товаров, версии, inbox"];
-    orders_db [label="Orders DB\n[Container: PostgreSQL]\nЗаказы, снимки цен, история, outbox/inbox"];
-    payments_db [label="Payments DB\n[Container: PostgreSQL]\nОперации, идемпотентность, outbox"];
-    notifications_db [label="Notifications DB\n[Container: PostgreSQL]\nДоставки, повторы, inbox"];
+    catalog_db [label="Catalog DB\n[Container: PostgreSQL]\nТовары, цены, остатки, резервы"];
+    feed_db [label="Feed DB\n[Container: PostgreSQL]\nКопия товаров для ленты, версии"];
+    orders_db [label="Orders DB\n[Container: PostgreSQL]\nЗаказы, снимки цен, история"];
+    payments_db [label="Payments DB\n[Container: PostgreSQL]\nПлатёжные операции, статусы"];
+    notifications_db [label="Notifications DB\n[Container: PostgreSQL]\nДоставки, повторы"];
 
     web -> users [label="Вход и профиль\n[HTTPS/JSON, sync]"];
     web -> catalog [label="Управление товарами\n[HTTPS/JSON, sync]"];

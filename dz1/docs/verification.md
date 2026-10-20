@@ -1,15 +1,19 @@
 # Проверка каркаса
 
-Проверено 29 сентября 2026 года на Docker Engine 27.5.1, Docker Compose 2.32.4, Linux/arm64 в Docker Desktop. Это проверка реально запущенного контейнера, не только анализ Dockerfile.
+Проверено 2 октября 2026 года на Docker Engine 27.5.1, Docker Compose 2.32.4, Linux/arm64 в Docker Desktop. Это проверка реально запущенного контейнера, не только анализ Dockerfile.
 
-Из каталога `dz1` выполнены:
+Для проверки использовано отдельное имя Compose-проекта `soa-dz1-check`. Команды ниже выполняются из `dz1` (при проверке из корня передавался `-f dz1/docker-compose.yml`).
+
+При первой попытке завис `docker-credential-desktop`. Повторная сборка выполнена с временным `DOCKER_CONFIG` без авторизации и `DOCKER_HOST`, указывающим на сокет Docker Desktop. Образ Python публичный; пользовательская конфигурация Docker не менялась. Это особенность окружения проверки, для обычного запуска достаточно команд из README.
+
+Команды:
 
 ```bash
-docker compose up --build -d --wait
-docker compose ps
+docker compose -p soa-dz1-check up --build -d --wait
+docker compose -p soa-dz1-check ps
 curl --fail-with-body -i http://localhost:8080/health
 curl -i http://localhost:8080/orders
-docker inspect dz1-orders-1 --format '{{.State.Health.Status}} user={{.Config.User}} readonly={{.HostConfig.ReadonlyRootfs}}'
+docker inspect soa-dz1-check-orders-1 --format '{{.State.Health.Status}} user={{.Config.User}} readonly={{.HostConfig.ReadonlyRootfs}}'
 ```
 
 Результат:
@@ -24,3 +28,5 @@ docker inspect dz1-orders-1 --format '{{.State.Health.Status}} user={{.Config.Us
 | Корневая файловая система | `readonly=true` |
 
 Исходник C4 обработан Graphviz без ошибок. SVG проверен XML-парсером, изображение просмотрено визуально. Проектируемые бизнес-потоки не тестировались: по условию задания они не реализованы.
+
+После проверки тестовый контейнер и его сеть удалены командой `docker compose -p soa-dz1-check down`.
